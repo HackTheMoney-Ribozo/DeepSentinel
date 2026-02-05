@@ -20,6 +20,7 @@ export const config = {
     // DeepBook
     deepbook: {
         packageId: process.env.DEEPBOOK_PACKAGE_ID || '',
+        poolIds: (process.env.DEEPBOOK_POOL_IDS || '').split(',').filter(id => id.trim()),
     },
 
     // Monitoring
@@ -33,5 +34,14 @@ export const config = {
     arbitrage: {
         defaultTradeAmount: parseInt(process.env.DEFAULT_TRADE_AMOUNT || '1000'),
         maxSlippage: parseFloat(process.env.MAX_SLIPPAGE || '0.01'),
+    },
+
+    // AI Agent Settings
+    agent: {
+        autonomousMode: process.env.AUTONOMOUS_MODE === 'true',
+        maxDailyLoss: parseFloat(process.env.MAX_DAILY_LOSS || '10'),
+        maxPositionSize: parseFloat(process.env.MAX_POSITION_SIZE || '1000'),
+        useRealPools: process.env.USE_REAL_POOLS === 'true',
+        executionIntervalMs: parseInt(process.env.EXECUTION_INTERVAL_MS || '30000'), // 30 seconds
     },
 };

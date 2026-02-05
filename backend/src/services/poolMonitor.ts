@@ -1,5 +1,8 @@
 import { PoolData } from '../types';
 import { suiClient } from '../blockchain/suiClient';
+import { deepBookClient } from '../blockchain/deepBookClient';
+import { dataCollector } from './dataCollector';
+import { config } from '../config';
 
 /**
  * Pool Monitor Service
@@ -45,17 +48,22 @@ export class PoolMonitorService {
 
     /**
      * Fetch pool data from blockchain
-     * For MVP: We'll simulate pool data
-     * In production: Query actual DeepBook pools
+     * Uses real DeepBook queries or mock data based on configuration
      */
     private async fetchPools() {
         try {
-            // TODO: Replace with actual DeepBook pool queries
-            // For MVP, we'll create simulated pools with random price fluctuations
+            const useRealData = process.env.USE_REAL_POOLS === 'true';
 
-            const mockPools = this.generateMockPools();
+            let poolsData: PoolData[];
 
-            mockPools.forEach(pool => {
+            if (useRealData) {
+                poolsData = await this.fetchRealPools();
+            } else {
+                console.log('⚠️  Using mock pools (set USE_REAL_POOLS=true for real data)');
+                poolsData = this.generateMockPools();
+            }
+
+            poolsData.forEach(pool => {
                 const existing = this.pools.get(pool.poolId);
 
                 if (existing) {
@@ -67,6 +75,11 @@ export class PoolMonitorService {
                 }
 
                 this.pools.set(pool.poolId, pool);
+
+                // Record market conditions for learning
+                if (useRealData) {
+                    dataCollector.recordMarketConditions(pool.poolId, pool);
+                }
             });
 
         } catch (error) {
@@ -75,12 +88,64 @@ export class PoolMonitorService {
     }
 
     /**
-     * Generate mock pool data for MVP testing
+     * Fetch real pool data from DeepBook
      */
+    private async fetchRealPools(): Promise<PoolData[]> {
+        // Get configured pool IDs from environment
+        const poolIdsStr = process.env.DEEPBOOK_POOL_IDS || '';
+        const poolIds = poolIdsStr.split(',').filter(id => id.trim());
+
+        if (poolIds.length === 0) {
+            console.warn('⚠️  No pool IDs configured. Set DEEPBOOK_POOL_IDS in .env');
+            // Try to discover pools
+            const discovered = await deepBookClient.discoverPools();
+            poolIds.push(...discovered);
+        }
+
+        if (poolIds.length === 0) {
+            console.log('Using mock pools as fallback');
+            return this.generateMockPools();
+        }
+
+        console.log(`📡 Querying ${poolIds.length} DeepBook pools...`);
+
+        const poolStates = await deepBookClient.getMultiplePoolStates(poolIds);
+        const pools: PoolData[] = [];
+
+        for (const [poolId, state] of poolStates) {
+            const price = parseFloat(state.currentPrice);
+            const baseLiq = parseFloat(state.baseLiquidity) / 1e9; // Convert from MIST
+            const quoteLiq = parseFloat(state.quoteLiquidity) / 1e9;
+
+            pools.push({
+                poolId: state.poolId,
+                tokenA: state.baseAsset,
+                tokenB: state.quoteAsset,
+                priceA: price,
+                priceB: price > 0 ? 1 / price : 0,
+                liquidityA: baseLiq,
+                liquidityB: quoteLiq,
+                lastUpdate: Date.now(),
+            });
+        }
+
+        return pools;
+    }
+
+    /**
+   * Generate mock pool data for MVP testing
+   * Occasionally creates larger spreads to demonstrate arbitrage opportunities
+   */
     private generateMockPools(): PoolData[] {
+        const now = Date.now();
+        const shouldCreateOpportunity = Math.random() < 0.15; // 15% chance each update
+
         const basePrice1 = 1.0 + (Math.random() - 0.5) * 0.02; // SUI/USDC
         const basePrice2 = 1.0 + (Math.random() - 0.5) * 0.02; // SUI/USDT
         const basePrice3 = 1.0 + (Math.random() - 0.5) * 0.03; // SUI/DAI
+
+        // For demo: occasionally create a larger spread between pool 1 and 2
+        const spreadMultiplier = shouldCreateOpportunity ? (0.005 + Math.random() * 0.01) : 0;
 
         return [
             {
@@ -91,17 +156,17 @@ export class PoolMonitorService {
                 priceB: 1 / basePrice1,
                 liquidityA: 100000 + Math.random() * 50000,
                 liquidityB: 100000 + Math.random() * 50000,
-                lastUpdate: Date.now(),
+                lastUpdate: now,
             },
             {
                 poolId: 'pool_sui_usdc_2',
                 tokenA: 'SUI',
                 tokenB: 'USDC',
-                priceA: basePrice1 + (Math.random() - 0.5) * 0.01, // Slightly different price
-                priceB: 1 / (basePrice1 + (Math.random() - 0.5) * 0.01),
+                priceA: basePrice1 + spreadMultiplier + (Math.random() - 0.5) * 0.002,
+                priceB: 1 / (basePrice1 + spreadMultiplier + (Math.random() - 0.5) * 0.002),
                 liquidityA: 80000 + Math.random() * 40000,
                 liquidityB: 80000 + Math.random() * 40000,
-                lastUpdate: Date.now(),
+                lastUpdate: now,
             },
             {
                 poolId: 'pool_sui_usdt',
@@ -111,7 +176,7 @@ export class PoolMonitorService {
                 priceB: 1 / basePrice2,
                 liquidityA: 120000 + Math.random() * 60000,
                 liquidityB: 120000 + Math.random() * 60000,
-                lastUpdate: Date.now(),
+                lastUpdate: now,
             },
             {
                 poolId: 'pool_sui_dai',
@@ -121,7 +186,7 @@ export class PoolMonitorService {
                 priceB: 1 / basePrice3,
                 liquidityA: 90000 + Math.random() * 45000,
                 liquidityB: 90000 + Math.random() * 45000,
-                lastUpdate: Date.now(),
+                lastUpdate: now,
             },
         ];
     }

@@ -1,15 +1,20 @@
 import { ArbitrageOpportunity, PoolData } from '../types';
 import { config } from '../config';
+import { decisionEngine } from './decisionEngine';
+import { executionEngine } from './executionEngine';
+import { dataCollector } from './dataCollector';
 
 /**
- * Arbitrage Engine - Rule-based detection
- * Detects profitable arbitrage opportunities between pools
+ * IMPROVED Arbitrage Engine with AI Decision Making
+ * No longer uses hardcoded rules - delegates to AI decision engine
  */
 export class ArbitrageEngine {
     private opportunities: Map<string, ArbitrageOpportunity> = new Map();
+    private executingIds: Set<string> = new Set();
 
     /**
      * Detect arbitrage opportunities between pools
+     * Now uses AI scoring to evaluate opportunities
      */
     detectOpportunities(pools: PoolData[]): ArbitrageOpportunity[] {
         const newOpportunities: ArbitrageOpportunity[] = [];
@@ -27,14 +32,34 @@ export class ArbitrageEngine {
 
                 const opportunity = this.analyzePoolPair(poolA, poolB);
 
-                if (opportunity && opportunity.shouldExecute) {
-                    newOpportunities.push(opportunity);
-                    this.opportunities.set(opportunity.id, opportunity);
+                if (opportunity) {
+                    // Score using AI decision engine
+                    const score = decisionEngine.scoreOpportunity(opportunity);
+                    const risk = decisionEngine.assessRisk(opportunity, score);
+
+                    // AI decides whether to mark as executable
+                    const shouldExecute = decisionEngine.shouldExecute(score, risk);
+
+                    if (shouldExecute) {
+                        // Optimize trade size using AI
+                        const optimizedSize = decisionEngine.optimizeTradeSize(opportunity);
+                        opportunity.tradeAmount = optimizedSize;
+                        opportunity.shouldExecute = true;
+
+                        newOpportunities.push(opportunity);
+                        this.opportunities.set(opportunity.id, opportunity);
+
+                        console.log(`🎯 AI-detected opportunity: ${opportunity.id}`);
+                        console.log(`   Score: ${score.overall}/100 | Risk: ${risk.overall.toFixed(1)} | Confidence: ${(score.confidence * 100).toFixed(1)}%`);
+                        console.log(`   Profit: $${opportunity.estimatedProfit.toFixed(4)} | Size: $${optimizedSize}`);
+                    } else {
+                        console.log(`⏭️  AI rejected: ${opportunity.id} (Score: ${score.overall}, Risk: ${risk.overall.toFixed(1)})`);
+                    }
                 }
             }
         }
 
-        // Clean up old opportunities (older than 30 seconds)
+        // Clean up old opportunities
         this.cleanupOldOpportunities();
 
         return newOpportunities;
@@ -42,18 +67,19 @@ export class ArbitrageEngine {
 
     /**
      * Analyze a pair of pools for arbitrage opportunity
+     * Creates opportunity object - AI will score it later
      */
     private analyzePoolPair(poolA: PoolData, poolB: PoolData): ArbitrageOpportunity | null {
         // Calculate price spread
         const spread = Math.abs(poolA.priceA - poolB.priceA);
         const spreadPercentage = spread / Math.min(poolA.priceA, poolB.priceA);
 
-        // Rule 1: Spread must be above minimum threshold
-        if (spreadPercentage < config.monitoring.minSpreadThreshold) {
-            return null;
+        // Basic threshold check (AI will do deeper analysis)
+        if (spreadPercentage < config.monitoring.minSpreadThreshold * 0.5) {
+            return null; // Too small to even consider
         }
 
-        // Calculate estimated profit
+        // Calculate estimated profit (approximate)
         const tradeAmount = config.arbitrage.defaultTradeAmount;
         const gasEstimate = 0.001; // Estimated gas cost in SUI
         const flashLoanFee = 0.0009; // 0.09% DeepBook flash loan fee
@@ -66,24 +92,12 @@ export class ArbitrageEngine {
         const fees = gasEstimate + (tradeAmount * flashLoanFee);
         const estimatedProfit = grossProfit - fees;
 
-        // Rule 2: Profit must be above minimum threshold
-        if (estimatedProfit < config.monitoring.minProfitThreshold) {
+        // Basic profit check
+        if (estimatedProfit < 0) {
             return null;
         }
 
-        // Rule 3: Check liquidity (both pools must have enough)
-        const minLiquidity = tradeAmount * 1.1; // 10% buffer
-        if (poolA.liquidityA < minLiquidity || poolB.liquidityA < minLiquidity) {
-            return null;
-        }
-
-        // Rule 4: Slippage check
-        const estimatedSlippage = this.estimateSlippage(tradeAmount, poolA, poolB);
-        if (estimatedSlippage > config.arbitrage.maxSlippage) {
-            return null;
-        }
-
-        // Create opportunity object
+        // Create opportunity object (AI will score it)
         const opportunity: ArbitrageOpportunity = {
             id: `arb_${poolA.poolId}_${poolB.poolId}_${Date.now()}`,
             poolA,
@@ -93,7 +107,7 @@ export class ArbitrageEngine {
             estimatedProfit,
             tradeAmount,
             gasEstimate,
-            shouldExecute: true,
+            shouldExecute: false, // AI will decide
             createdAt: Date.now(),
         };
 
@@ -101,14 +115,53 @@ export class ArbitrageEngine {
     }
 
     /**
-     * Estimate slippage for a trade
+     * Execute an opportunity autonomously (if autonomous mode enabled)
      */
-    private estimateSlippage(amount: number, poolA: PoolData, poolB: PoolData): number {
-        // Simplified slippage calculation
-        // In production: Use more sophisticated constant product formula
-        const impactA = amount / poolA.liquidityA;
-        const impactB = amount / poolB.liquidityB;
-        return Math.max(impactA, impactB);
+    async executeOpportunityIfAutonomous(opportunity: ArbitrageOpportunity) {
+        if (!config.agent.autonomousMode) {
+            console.log('⏸️  Autonomous mode disabled, skipping execution');
+            return;
+        }
+
+        if (this.executingIds.has(opportunity.id)) {
+            console.log('⏭️  Already executing this opportunity');
+            return;
+        }
+
+        this.executingIds.add(opportunity.id);
+
+        try {
+            console.log(`🚀 Executing ${opportunity.id} autonomously...`);
+
+            // Score one more time to ensure it's still valid
+            const score = decisionEngine.scoreOpportunity(opportunity);
+            const risk = decisionEngine.assessRisk(opportunity, score);
+
+            if (!decisionEngine.shouldExecute(score, risk)) {
+                console.log('⏭️  Opportunity no longer valid, skipping');
+                return;
+            }
+
+            // Execute via execution engine
+            const result = await executionEngine.executeArbitrage(
+                opportunity,
+                opportunity.tradeAmount
+            );
+
+            // Record result for learning
+            decisionEngine.recordExecution(opportunity, score, result);
+
+            if (result.success) {
+                console.log(`✅ Execution successful! Profit: $${result.profit}`);
+            } else {
+                console.log(`❌ Execution failed: ${result.error}`);
+            }
+
+        } catch (error: any) {
+            console.error(`💥 Execution error for ${opportunity.id}:`, error);
+        } finally {
+            this.executingIds.delete(opportunity.id);
+        }
     }
 
     /**
@@ -154,6 +207,20 @@ export class ArbitrageEngine {
      */
     getOpportunityCount(): number {
         return this.opportunities.size;
+    }
+
+    /**
+     * Get AI decision engine parameters (for monitoring)
+     */
+    getAIParameters() {
+        return decisionEngine.getParameters();
+    }
+
+    /**
+     * Get execution engine stats
+     */
+    getExecutionStats() {
+        return executionEngine.getStats();
     }
 }
 
