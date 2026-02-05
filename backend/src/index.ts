@@ -9,6 +9,7 @@ import { executionEngine } from './services/executionEngine';
 import { decisionEngine } from './services/decisionEngine';
 import { dataCollector } from './services/dataCollector';
 import { strategyAdvisor } from './services/strategyAdvisor';
+import { transactionLogger } from './services/transactionLogger';
 import { config } from './config';
 
 // Load environment variables
@@ -20,7 +21,7 @@ const io = new Server(server, {
     cors: {
         origin: config.server.env === 'production'
             ? process.env.FRONTEND_URL
-            : 'http://localhost:5173',
+            : ['http://localhost:5173', 'http://localhost:5174'],
         methods: ['GET', 'POST']
     }
 });
@@ -114,6 +115,26 @@ app.post('/api/execute/:opportunityId', async (req, res) => {
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// NEW: Transaction log endpoints
+app.get('/api/log', (req, res) => {
+    const limit = parseInt(req.query.limit as string) || 50;
+    const logs = transactionLogger.getRecentLogs(limit);
+    res.json({
+        total: logs.length,
+        logs
+    });
+});
+
+app.get('/api/log/stats', (_req, res) => {
+    const stats = transactionLogger.getStatistics();
+    res.json(stats);
+});
+
+app.get('/api/log/pnl', (_req, res) => {
+    const pnl = transactionLogger.getPnLSummary();
+    res.json(pnl);
 });
 
 // === WEBSOCKET ===
@@ -210,7 +231,7 @@ server.listen(PORT, () => {
     `);
 
     // Start pool monitoring
-    poolMonitor.start(config.monitoring.pollIntervalMs);
+    poolMonitor.start();
 
     // Start autonomous agent loop
     setInterval(autonomousAgentLoop, config.agent.executionIntervalMs);
