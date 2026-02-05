@@ -22,8 +22,8 @@ interface AgentStatus {
   strategy: {
     mode: string;
     reasoning: string;
-    positionS sizing: number;
-riskLimit: number;
+    positionSizing: number;
+    riskLimit: number;
   };
 }
 
@@ -125,8 +125,8 @@ function App() {
                 <button
                   onClick={toggleMode}
                   className={`px-3 py-1 rounded text-xs font-medium ${autonomousMode
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-600 text-gray-300'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-600 text-gray-300'
                     }`}
                 >
                   {autonomousMode ? '🤖 AUTONOMOUS' : '👤 MANUAL'}
