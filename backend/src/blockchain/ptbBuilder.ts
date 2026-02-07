@@ -1,4 +1,4 @@
-import { Transaction } from '@mysten/sui/transactions';
+import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { suiClient } from './suiClient';
 import { config } from '../config';
 
@@ -9,8 +9,8 @@ export class PTBBuilder {
     /**
      * Build a simple transfer PTB
      */
-    buildTransfer(recipient: string, amount: bigint): Transaction {
-        const tx = new Transaction();
+    buildTransfer(recipient: string, amount: bigint): TransactionBlock {
+        const tx = new TransactionBlock();
         const [coin] = tx.splitCoins(tx.gas, [amount]);
         tx.transferObjects([coin], recipient);
         return tx;
@@ -19,8 +19,8 @@ export class PTBBuilder {
     /**
      * Build PTB to create arbitrage vault
      */
-    buildCreateVault(): Transaction {
-        const tx = new Transaction();
+    buildCreateVault(): TransactionBlock {
+        const tx = new TransactionBlock();
 
         tx.moveCall({
             target: `${config.deepbook.packageId || config.sui.network}::vault::create_vault`,
@@ -33,8 +33,8 @@ export class PTBBuilder {
     /**
      * Build PTB to deposit into vault
      */
-    buildDeposit(vaultId: string, amount: bigint): Transaction {
-        const tx = new Transaction();
+    buildDeposit(vaultId: string, amount: bigint): TransactionBlock {
+        const tx = new TransactionBlock();
 
         const [coin] = tx.splitCoins(tx.gas, [amount]);
 
@@ -52,8 +52,8 @@ export class PTBBuilder {
     /**
      * Build PTB to withdraw from vault
      */
-    buildWithdraw(vaultId: string, amount: bigint): Transaction {
-        const tx = new Transaction();
+    buildWithdraw(vaultId: string, amount: bigint): TransactionBlock {
+        const tx = new TransactionBlock();
 
         tx.moveCall({
             target: `${config.deepbook.packageId}::vault::withdraw`,
@@ -75,8 +75,8 @@ export class PTBBuilder {
         poolA: string,
         poolB: string,
         amount: bigint
-    ): Transaction {
-        const tx = new Transaction();
+    ): TransactionBlock {
+        const tx = new TransactionBlock();
 
         // For MVP: Just record the arbitrage execution
         // In production: This would do flash loan → swap A → swap B → repay → profit
@@ -101,8 +101,8 @@ export class PTBBuilder {
         poolB: string,
         amount: bigint,
         deepbookPackageId: string
-    ): Transaction {
-        const tx = new Transaction();
+    ): TransactionBlock {
+        const tx = new TransactionBlock();
 
         // Step 1: Flash loan from DeepBook
         // const [flashLoan] = tx.moveCall({
@@ -140,7 +140,7 @@ export class PTBBuilder {
     /**
      * Estimate gas for a transaction
      */
-    async estimateGas(tx: Transaction): Promise<bigint> {
+    async estimateGas(tx: TransactionBlock): Promise<bigint> {
         try {
             const dryRun = await suiClient.dryRunTransaction(tx);
             const gasUsed = dryRun.effects.gasUsed;

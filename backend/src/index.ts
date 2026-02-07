@@ -10,6 +10,7 @@ import { decisionEngine } from './services/decisionEngine';
 import { dataCollector } from './services/dataCollector';
 import { strategyAdvisor } from './services/strategyAdvisor';
 import { transactionLogger } from './services/transactionLogger';
+import { pnlTracker } from './services/pnlTracker';
 import { config } from './config';
 
 // Load environment variables
@@ -137,6 +138,15 @@ app.get('/api/log/pnl', (_req, res) => {
     res.json(pnl);
 });
 
+app.get('/api/pnl', (_req, res) => {
+    const pnl = pnlTracker.getCurrentPnL();
+    const history = pnlTracker.getTradeHistory();
+    res.json({
+        current: pnl,
+        history: history.slice(-20) // Last 20 trades
+    });
+});
+
 // === WEBSOCKET ===
 
 io.on('connection', (socket) => {
@@ -232,6 +242,9 @@ server.listen(PORT, () => {
 
     // Start pool monitoring
     poolMonitor.start();
+
+    // Start PnL tracker
+    pnlTracker.start();
 
     // Start autonomous agent loop
     setInterval(autonomousAgentLoop, config.agent.executionIntervalMs);

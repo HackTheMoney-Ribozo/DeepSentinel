@@ -1,5 +1,5 @@
-import { Transaction } from '@mysten/sui/transactions';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { TransactionBlock } from '@mysten/sui.js/transactions';
+import { Ed25519Keypair } from '@mysten/sui.js/keypairs/ed25519';
 import { suiClient } from '../blockchain/suiClient';
 import { ptbBuilder } from '../blockchain/ptbBuilder';
 import { ArbitrageOpportunity, SimulationResult, ExecutionResult, SafetyCheck } from '../types';
@@ -112,7 +112,7 @@ export class ExecutionEngine {
     /**
      * Build arbitrage PTB with real flash loan logic
      */
-    private buildArbitragePTB(opportunity: ArbitrageOpportunity, tradeSize: number): Transaction {
+    private buildArbitragePTB(opportunity: ArbitrageOpportunity, tradeSize: number): TransactionBlock {
         // For now, use the PTBBuilder's method
         // TODO: Implement real DeepBook flash loan sequence
         const vaultId = process.env.VAULT_PACKAGE_ID || '';
@@ -128,7 +128,7 @@ export class ExecutionEngine {
     /**
      * Simulate transaction before execution
      */
-    async simulateTransaction(ptb: Transaction): Promise<SimulationResult> {
+    async simulateTransaction(ptb: TransactionBlock): Promise<SimulationResult> {
         try {
             const dryRun = await suiClient.dryRunTransaction(ptb);
 
@@ -174,7 +174,7 @@ export class ExecutionEngine {
     /**
      * Execute transaction on blockchain
      */
-    private async executeTransaction(ptb: Transaction): Promise<ExecutionResult> {
+    private async executeTransaction(ptb: TransactionBlock): Promise<ExecutionResult> {
         try {
             // Get keypair from environment
             const privateKey = config.sui.privateKey;

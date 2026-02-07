@@ -1,5 +1,5 @@
-import { SuiClient, SuiTransactionBlockResponse } from '@mysten/sui/client';
-import { Transaction } from '@mysten/sui/transactions';
+import { SuiClient, SuiTransactionBlockResponse } from '@mysten/sui.js/client';
+import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { config } from '../config';
 
 /**
@@ -38,12 +38,12 @@ export class SuiClientWrapper {
      * Execute a transaction block
      */
     async executeTransaction(
-        tx: Transaction,
+        tx: TransactionBlock,
         signer: any
     ): Promise<SuiTransactionBlockResponse> {
-        const result = await this.client.signAndExecuteTransaction({
+        const result = await this.client.signAndExecuteTransactionBlock({
             signer,
-            transaction: tx,
+            transactionBlock: tx,
             options: {
                 showEffects: true,
                 showObjectChanges: true,
@@ -94,8 +94,8 @@ export class SuiClientWrapper {
     /**
      * Wait for transaction confirmation
      */
-    async waitForTransaction(txDigest: string): Promise<SuiTransactionBlockResponse> {
-        return await this.client.waitForTransaction({
+    async waitForTransactionBlock(txDigest: string): Promise<SuiTransactionBlockResponse> {
+        return await this.client.waitForTransactionBlock({
             digest: txDigest,
             options: {
                 showEffects: true,
@@ -115,7 +115,7 @@ export class SuiClientWrapper {
     /**
      * Dry run a transaction to estimate gas
      */
-    async dryRunTransaction(tx: Transaction): Promise<any> {
+    async dryRunTransaction(tx: TransactionBlock): Promise<any> {
         return await this.client.dryRunTransactionBlock({
             transactionBlock: await tx.build({ client: this.client }),
         });

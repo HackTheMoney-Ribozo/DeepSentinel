@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './store';
+import { PnLDashboard } from './components/PnLDashboard';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -158,7 +159,7 @@ function App() {
           <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 backdrop-blur-sm border border-green-700/50 rounded-lg p-6">
             <div className="text-green-400 text-sm mb-1">Total PnL</div>
             <div className="text-3xl font-bold text-green-400">
-              {stats ? `$${stats.trades.total_profit.toFixed(2)}` : '$0.00'}
+              {stats?.trades?.total_profit ? `$${stats.trades.total_profit.toFixed(2)}` : '$0.00'}
             </div>
             <div className="text-xs text-gray-400 mt-1">All-time profit/loss</div>
           </div>
@@ -166,7 +167,7 @@ function App() {
           <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 backdrop-blur-sm border border-purple-700/50 rounded-lg p-6">
             <div className="text-purple-400 text-sm mb-1">Trades</div>
             <div className="text-3xl font-bold">
-              {stats ? `${stats.trades.successful_trades}/${stats.trades.total_trades}` : '0/0'}
+              {stats?.trades ? `${stats.trades.successful_trades || 0}/${stats.trades.total_trades || 0}` : '0/0'}
             </div>
             <div className="text-xs text-gray-400 mt-1">Successful / Total</div>
           </div>
@@ -255,6 +256,11 @@ function App() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* PnL Dashboard */}
+        <div className="mb-8">
+          <PnLDashboard />
         </div>
 
         {/* Info Banner */}
