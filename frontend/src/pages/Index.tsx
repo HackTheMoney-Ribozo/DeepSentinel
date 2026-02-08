@@ -5,7 +5,7 @@ import { ArbitrageOpportunityCard } from '@/components/ArbitrageOpportunityCard'
 import { PnLSimulator } from '@/components/PnLSimulator';
 import { ThresholdSettings } from '@/components/ThresholdSettings';
 import { StatCard } from '@/components/StatCard';
-import { RefreshCw, Shield, Cpu, Activity, Wallet } from 'lucide-react';
+import { Wallet, TrendingUp, BarChart3, Brain, Target, Activity, Wifi, WifiOff, RefreshCw, Cpu, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -26,11 +26,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-6">
         {/* Hero Section */}
         <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
-            <Shield className="w-4 h-4 text-primary" />
-            <span className="text-sm text-primary font-medium">Read-Only • Simulation Mode</span>
-          </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+          <h2 className="text-5xl md:text-6xl font-bold text-foreground mb-2 font-serif italic">
             AI-Filtered Arbitrage Intelligence
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -95,16 +91,6 @@ const Index = () => {
             <PnLSimulator opportunity={bestOpportunity} />
           </div>
         </div>
-
-        {/* Footer */}
-        <footer className="mt-12 pt-8 border-t border-border/30 text-center">
-          <p className="text-xs text-muted-foreground font-mono">
-            DeepSentinel • Built for Sui Blockchain • DeepBook v3 Integration
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            ⚠️ Simulation only — No real transactions executed
-          </p>
-        </footer>
       </main>
     </div>
   );

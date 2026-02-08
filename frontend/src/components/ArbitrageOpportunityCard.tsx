@@ -1,6 +1,7 @@
 import { ArbitrageLoop } from '@/types/arbitrage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ArrowRight, Zap, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 interface ArbitrageOpportunityCardProps {
@@ -151,6 +152,18 @@ export const ArbitrageOpportunityCard = ({ opportunity }: ArbitrageOpportunityCa
             </ul>
           </div>
         )}
+
+        {/* Checkout Button */}
+        <Button
+          className={`w-full ${opportunity.netProfitPercent > 0
+            ? 'bg-success hover:bg-success/90 text-white shadow-lg'
+            : 'bg-muted text-muted-foreground cursor-not-allowed'
+            }`}
+          disabled={opportunity.netProfitPercent <= 0}
+        >
+          <CheckCircle className="w-4 h-4 mr-2" />
+          {opportunity.netProfitPercent > 0 ? 'Checkout Opportunity' : 'No Profit Available'}
+        </Button>
       </CardContent>
     </Card>
   );
